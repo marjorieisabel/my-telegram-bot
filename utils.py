@@ -122,9 +122,7 @@ def leaderboard_get_today_total():
     # Karena leaderboard cuma count total menfess, untuk simplifikasi
     return sum(leaderboard.values())
 
-# utils.py
 def get_leaderboard():
-    from datetime import datetime, timedelta
     week_ago = datetime.now() - timedelta(days=7)
     leaderboard_data = {}
     for user_id, date_counts in user_fess_count.items():
@@ -144,3 +142,15 @@ def get_user_fess_count(user_id):
     today = datetime.now().date()
     date_counts = user_fess_count.get(user_id, [])
     return sum(count for date, count in date_counts if date == today)
+
+def get_top_leaderboard(top_n=10):
+    leaderboard_sorted = get_leaderboard()
+    top_list = leaderboard_sorted[:top_n]
+    result = []
+    rank = 1
+    for user_id, count in top_list:
+        username = user_profiles.get(user_id, {}).get("username", "anonymous")
+        masked = mask_username(username)
+        result.append((rank, masked, count))
+        rank += 1
+    return result
