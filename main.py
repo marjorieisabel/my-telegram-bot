@@ -176,7 +176,7 @@ def handle_fess(message):
         bot.reply_to(message, "Kamu harus menulis pesan setelah /fess")
         return
 
-    channel_id = "@nama_channel"  # ganti dengan username channel kamu
+    channel_id = "@muncorner"  # ganti dengan username channel kamu
     try:
         bot.send_message(channel_id, fess_text)
         bot.reply_to(message, "Fess kamu sudah terkirim ke channel!")
