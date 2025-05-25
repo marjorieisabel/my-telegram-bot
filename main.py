@@ -264,33 +264,76 @@ def callback_query(call):
         text = f"{get_text(user_id, 'setting_profile')}\nUsername: @{uname}\nTotal menfess: {fcount}"
         bot.send_message(user_id, text)
 
-    elif data == "setting_language":
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("Indonesia 🇮🇩", callback_data="set_lang_id"),
-            types.InlineKeyboardButton("English 🇺🇸", callback_data="set_lang_en"),
-            types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
-        )
-        bot.send_message(user_id, get_text(user_id, "setting_lang"), reply_markup=markup)
-
-    elif data == "set_lang_id":
-        user_profiles[user_id]["lang"] = "id"
-        bot.send_message(user_id, get_text(user_id, "setting_saved"))
-
-    elif data == "set_lang_en":
-        user_profiles[user_id]["lang"] = "en"
-        bot.send_message(user_id, get_text(user_id, "setting_saved"))
-
-    elif data == "setting_notification":
+    if data == "setting_notification":
         profile = user_profiles.get(user_id, {})
         notif = profile.get("notif", True)
         markup = types.InlineKeyboardMarkup(row_width=2)
-markup.add(
-    types.InlineKeyboardButton("On ✅" if notif else "Off ❌", callback_data="toggle_notif"),
-    types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
-)
-bot.send_message(user_id, get_text(user_id, "setting_notif"), reply_markup=markup)
+        markup.add(
+            types.InlineKeyboardButton("On ✅" if notif else "Off ❌", callback_data="toggle_notif"),
+            types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
+        )
+        bot.edit_message_text(
+            "Atur notifikasi kamu",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=markup
+        )
 
+    elif data == "toggle_notif":
+        # Toggle status notif
+        profile = user_profiles.setdefault(user_id, {})
+        profile["notif"] = not profile.get("notif", True)
+        notif = profile["notif"]
+
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("On ✅" if notif else "Off ❌", callback_data="toggle_notif"),
+            types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
+        )
+        bot.edit_message_text(
+            f"Notifikasi sekarang {'Aktif ✅' if notif else 'Nonaktif ❌'}",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=markup
+        )
+
+    elif data == "back_setting":
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🔔 Atur Notifikasi", callback_data="setting_notification"),
+            types.InlineKeyboardButton("👤 Atur Profil", callback_data="setting_profile")
+        )
+        bot.edit_message_text(
+            "Pilih pengaturan:",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=markup
+        )
+
+    elif data == "setting_profile":
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🔒 Ubah Nama", callback_data="change_name"),
+            types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
+        )
+        bot.edit_message_text(
+            "Atur profil kamu",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            reply_markup=markup
+        )
+
+    elif data == "change_name":
+        bot.edit_message_text(
+            "Kirimkan nama baru kamu",
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id
+        )
+        bot.register_next_step_handler(call.message, process_name_change)
+
+    else:
+        bot.answer_callback_query(call.id, "Perintah tidak dikenali.")
+        
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.infinity_polling()
