@@ -152,3 +152,15 @@ def register_handlers(bot):
             end_anon_chat(user_id)
         else:
             bot.send_message(user_id, "Kamu tidak sedang dalam percakapan anon.")
+
+from utils import get_top10_leaderboard, mask_username
+from data import user_profiles  # asumsi kamu simpan profil user di sini
+
+def handle_leaderboard_request(user_id, send_message):
+    top10 = get_top10_leaderboard()
+    text = "🏆 Ranking Menfess Mingguan\n"
+    for i, (uid, count) in enumerate(top10, start=1):
+        username = user_profiles.get(uid, {}).get("username", "anonymous")
+        masked = mask_username(username)
+        text += f"{i}. {masked}: {count} menfess\n"
+    send_message(user_id, text)
