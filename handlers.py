@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from utils import (
     pending_users, user_fess_count, user_last_messages, leaderboard, anon_chats, user_profiles,
     get_text, can_send, contains_bad_words, update_leaderboard, add_fess_message,
-    find_anon_partner, end_anon_chat, mask_username, leaderboard_get_last_7days, leaderboard_get_today_total
+    find_anon_partner, end_anon_chat, mask_username, get_leaderboard, get_total_menfess_today, get_user_fess_count
 )
 
 CHANNEL_ID = -1002445709942
@@ -13,9 +13,6 @@ def register_handlers(bot):
     def send_main_menu(message):
         user_id = message.from_user.id
         user_profiles.setdefault(user_id, {"lang": "id", "notif": True, "username": message.from_user.username or "", "fess_count": 0})
-        send_menu(bot, user_id)
-
-    def send_menu(bot, user_id):
         markup = types.InlineKeyboardMarkup(row_width=2)
         markup.add(
             types.InlineKeyboardButton("📖 About", callback_data="about"),
@@ -27,99 +24,122 @@ def register_handlers(bot):
         )
         bot.send_message(user_id, get_text(user_id, "menu"), reply_markup=markup)
 
-    @bot.message_handler(func=lambda message: message.from_user.id in pending_users)
-    def handle_fess_message(message):
-        user_id = message.from_user.id
-        text = message.text
-        if not text:
-            bot.send_message(user_id, "Pesan tidak boleh kosong!")
-            return
-        if "💚" not in text:
-            bot.send_message(user_id, "Menfess wajib mengandung emoji 💚.")
-            return
-        if contains_bad_words(text):
-            bot.send_message(user_id, get_text(user_id, "bad_words_warning"))
-            return
-        msg = bot.send_message(CHANNEL_ID, text)
-        update_leaderboard(user_id)
-        add_fess_message(user_id, msg.message_id)
-        pending_users.discard(user_id)
-        bot.send_message(user_id, get_text(user_id, "send_fess_success"))
-
     @bot.callback_query_handler(func=lambda call: True)
     def callback_query(call):
         user_id = call.from_user.id
         data = call.data
 
         if data == "about":
-            bot.send_message(user_id, get_text(user_id, "about_muncorner"))
+            bot.send_message(user_id, "💌 **Tentang Muncorner** 💌\n\nMuncorner adalah platform bot Telegram untuk mengirim menfess anonim dan chatting secara rahasia. Kami mendukung privasi dan interaksi yang seru tanpa batasan identitas!\n\nGunakan dengan bijak ya!")
+            bot.answer_callback_query(call.id)
+
         elif data == "send_fess":
             if not can_send(user_id):
                 bot.send_message(user_id, get_text(user_id, "send_fess_limit"))
+                bot.answer_callback_query(call.id)
                 return
             pending_users.add(user_id)
-            bot.send_message(user_id, get_text(user_id, "send_fess_start"))
+            bot.send_message(user_id, "Silakan ketik pesan menfess-mu (wajib ada 💚):")
+
         elif data == "features":
-            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup = types.InlineKeyboardMarkup()
             markup.add(
-                types.InlineKeyboardButton("🏆 Leaderboard Menfess", callback_data="feature_leaderboard"),
+                types.InlineKeyboardButton("📈 Leaderboard Menfess", callback_data="feature_leaderboard"),
                 types.InlineKeyboardButton("💬 Anon Chat", callback_data="feature_anonchat"),
                 types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_main")
             )
-            bot.send_message(user_id, get_text(user_id, "menu_features"), reply_markup=markup)
-        elif data == "back_main":
-            send_menu(bot, user_id)
+            bot.send_message(user_id, "✨ Pilih fitur yang ingin kamu lihat:", reply_markup=markup)
+            bot.answer_callback_query(call.id)
+
         elif data == "feature_leaderboard":
-            ranking = leaderboard_get_last_7days()
-            text = get_text(user_id, "leaderboard_title") + "\n\n"
-            for uid, count in ranking:
-                if uid == user_id:
-                    text += f"👑 Kamu: {count} menfess\n"
-                else:
-                    uname = mask_username(user_profiles.get(uid, {}).get("username", "anonymous"))
-                    text += f"{uname}: {count} menfess\n"
+            ranking = get_leaderboard()
+            text = "📈 **Leaderboard Menfess Mingguan** 📈\n\n"
+            for idx, (uid, count) in enumerate(ranking, 1):
+                name = user_profiles.get(uid, {}).get("username", "anon")
+                name = mask_username(name) if uid != user_id else name
+                text += f"{idx}. {name} - {count} fess\n"
             bot.send_message(user_id, text)
-        elif data == "statistic":
-            personal_count = leaderboard.get(user_id, 0)
-            total_count = leaderboard_get_today_total()
-            text = get_text(user_id, "statistic_personal", count=personal_count) + "\n" + \
-                   get_text(user_id, "statistic_total", count=total_count)
-            bot.send_message(user_id, text)
+            bot.answer_callback_query(call.id)
+
+        elif data == "feature_anonchat":
+            partner = find_anon_partner(user_id)
+            if partner:
+                bot.send_message(user_id, "Partner ditemukan! Mulai ngobrol sekarang.\nKetik /end untuk mengakhiri chat.\nIngat, chat akan otomatis berakhir dalam 60 menit jika tidak aktif.")
+                bot.send_message(partner, "Partner ditemukan! Mulai ngobrol sekarang.\nKetik /end untuk mengakhiri chat.\nIngat, chat akan otomatis berakhir dalam 60 menit jika tidak aktif.")
+            else:
+                bot.send_message(user_id, "Menunggu partner anon... Sabar ya!")
+            bot.answer_callback_query(call.id)
+
         elif data == "setting":
-            bot.send_message(user_id, "Menu setting akan segera tersedia.")
+            bot.send_message(user_id, "⚙️ Fitur pengaturan akan segera hadir!")
+            bot.answer_callback_query(call.id)
+
+        elif data == "statistic":
+            personal = get_user_fess_count(user_id)
+            total = get_total_menfess_today()
+            bot.send_message(user_id, f"📊 Statistik Menfess:\n\n- Menfess kamu hari ini: {personal}\n- Total menfess Muncorner hari ini: {total}")
+            bot.answer_callback_query(call.id)
+
         elif data == "delete_fess":
             msgs = user_last_messages.get(user_id, [])
-            if not msgs:
-                bot.send_message(user_id, get_text(user_id, "delete_fess_no"))
+            markup = types.InlineKeyboardMarkup()
+            now = datetime.now()
+            for i, (msg_id, dt) in enumerate(msgs):
+                if now - dt <= timedelta(minutes=60):
+                    markup.add(types.InlineKeyboardButton(f"Fess {i+1} ({dt.strftime('%H:%M')})", callback_data=f"delete_msg_{msg_id}"))
+            if markup.keyboard:
+                bot.send_message(user_id, "Pilih fess yang ingin dihapus:", reply_markup=markup)
             else:
-                markup = types.InlineKeyboardMarkup()
-                now = datetime.now()
-                for i, (msg_id, dt) in enumerate(msgs):
-                    if now - dt <= timedelta(minutes=60):
-                        markup.add(types.InlineKeyboardButton(f"Fess {i+1} ({dt.strftime('%H:%M')})", callback_data=f"delete_msg_{msg_id}"))
-                if not markup.keyboard:
-                    bot.send_message(user_id, get_text(user_id, "delete_fess_fail"))
-                else:
-                    bot.send_message(user_id, "Pilih fess yang ingin dihapus:", reply_markup=markup)
+                bot.send_message(user_id, "Kamu tidak memiliki fess yang bisa dihapus.")
+            bot.answer_callback_query(call.id)
+
         elif data.startswith("delete_msg_"):
             msg_id = int(data[len("delete_msg_"):])
             try:
                 bot.delete_message(CHANNEL_ID, msg_id)
                 user_last_messages[user_id] = [(mid, dt) for (mid, dt) in user_last_messages[user_id] if mid != msg_id]
-                bot.send_message(user_id, get_text(user_id, "delete_fess_success"))
-            except:
-                bot.send_message(user_id, get_text(user_id, "delete_fess_fail"))
-        elif data == "feature_anonchat":
-            partner = find_anon_partner(user_id)
-            if partner:
-                bot.send_message(user_id, get_text(user_id, "anon_chat_start"))
-                bot.send_message(partner, get_text(partner, "anon_chat_start"))
-            else:
-                bot.send_message(user_id, get_text(user_id, "anon_chat_wait"))
+                bot.send_message(user_id, "Fess berhasil dihapus!")
+            except Exception:
+                bot.send_message(user_id, "Gagal menghapus fess.")
+            bot.answer_callback_query(call.id)
 
-    @bot.message_handler(func=lambda message: anon_chats.get(message.from_user.id))
+        elif data == "back_main":
+            send_main_menu(call.message)
+            bot.answer_callback_query(call.id)
+
+    @bot.message_handler(func=lambda message: message.from_user.id in pending_users)
+    def handle_fess(message):
+        user_id = message.from_user.id
+        text = message.text
+        if "💚" not in text:
+            bot.send_message(user_id, "Fess kamu harus mengandung 💚. Silakan coba lagi.")
+            return
+        if contains_bad_words(text):
+            bot.send_message(user_id, "Pesan menfess kamu mengandung kata yang tidak diperbolehkan.")
+            return
+        msg = bot.send_message(CHANNEL_ID, f"💌 Pesan anonim:\n{text}")
+        add_fess_message(user_id, msg.message_id)
+        update_leaderboard(user_id)
+        pending_users.discard(user_id)
+        bot.send_message(user_id, "Fess kamu telah dikirim ke Muncorner!")
+
+    @bot.message_handler(func=lambda message: user_id_in_anon_chat(message.from_user.id))
     def handle_anon_message(message):
         user_id = message.from_user.id
-        partner_id = anon_chats.get(user_id)
-        if partner_id:
-            bot.send_message(partner_id, f"Partner: {message.text}")
+        partner = anon_chats.get(user_id)
+        if partner:
+            bot.send_message(partner, f"Anon: {message.text}")
+
+    @bot.message_handler(commands=['end'])
+    def handle_end(message):
+        user_id = message.from_user.id
+        partner = anon_chats.get(user_id)
+        if partner:
+            bot.send_message(partner, "Partner telah mengakhiri percakapan.")
+            bot.send_message(user_id, "Kamu telah mengakhiri percakapan.")
+            end_anon_chat(user_id)
+        else:
+            bot.send_message(user_id, "Kamu tidak sedang dalam percakapan anon.")
+
+def user_id_in_anon_chat(user_id):
+    return user_id in anon_chats and anon_chats[user_id] is not None
