@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from utils import (
     pending_users, user_fess_count, user_last_messages, leaderboard, anon_chats, user_profiles,
     get_text, can_send, contains_bad_words, update_leaderboard, add_fess_message,
-    find_anon_partner, end_anon_chat, mask_username, get_leaderboard, get_total_menfess_today, get_user_fess_count,
+    find_anon_partner, end_anon_chat, mask_username, get_top10_leaderboard, get_total_menfess_today, get_user_fess_count,
     user_id_in_anon_chat
 )
 
@@ -153,8 +153,6 @@ def register_handlers(bot):
         else:
             bot.send_message(user_id, "Kamu tidak sedang dalam percakapan anon.")
 
-from utils import get_top10_leaderboard, mask_username
-from data import user_profiles  # asumsi kamu simpan profil user di sini
 
 def handle_leaderboard_request(user_id, send_message):
     top10 = get_top10_leaderboard()
