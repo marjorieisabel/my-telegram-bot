@@ -121,3 +121,15 @@ def leaderboard_get_last_7days():
 def leaderboard_get_today_total():
     # Karena leaderboard cuma count total menfess, untuk simplifikasi
     return sum(leaderboard.values())
+
+# utils.py
+def get_leaderboard():
+    from datetime import datetime, timedelta
+    week_ago = datetime.now() - timedelta(days=7)
+    leaderboard_data = {}
+    for user_id, date_counts in user_fess_count.items():
+        total_count = sum(count for date, count in date_counts if date >= week_ago.date())
+        if total_count > 0:
+            leaderboard_data[user_id] = total_count
+    sorted_leaderboard = sorted(leaderboard_data.items(), key=lambda x: x[1], reverse=True)
+    return sorted_leaderboard
