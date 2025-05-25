@@ -167,6 +167,22 @@ def send_main_menu(message):
     )
     bot.send_message(user_id, get_text(user_id, "menu"), reply_markup=markup)
 
+
+# Handler untuk /fess
+@bot.message_handler(commands=['fess'])
+def handle_fess(message):
+    fess_text = message.text[len('/fess '):].strip()  # ambil teks setelah /fess
+    if not fess_text:
+        bot.reply_to(message, "Kamu harus menulis pesan setelah /fess")
+        return
+
+    channel_id = "@nama_channel"  # ganti dengan username channel kamu
+    try:
+        bot.send_message(channel_id, fess_text)
+        bot.reply_to(message, "Fess kamu sudah terkirim ke channel!")
+    except Exception as e:
+        bot.reply_to(message, f"Gagal mengirim ke channel: {e}")
+
 # CALLBACK HANDLER
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
