@@ -1,8 +1,8 @@
-import os
 import telebot
 from handlers import register_handlers
 
-TOKEN = os.getenv("7676988779:AAGsGWqRyyGrZt17SNZSAXRvh8KGRCmnYhU")
+TOKEN = "7676988779:AAGsGWqRyyGrZt17SNZSAXRvh8KGRCmnYhU"  # langsung saja
+
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
 
