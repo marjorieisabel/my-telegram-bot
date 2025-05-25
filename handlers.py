@@ -3,7 +3,8 @@ from datetime import datetime, timedelta
 from utils import (
     pending_users, user_fess_count, user_last_messages, leaderboard, anon_chats, user_profiles,
     get_text, can_send, contains_bad_words, update_leaderboard, add_fess_message,
-    find_anon_partner, end_anon_chat, mask_username, get_leaderboard, get_total_menfess_today, get_user_fess_count
+    find_anon_partner, end_anon_chat, mask_username, get_leaderboard, get_total_menfess_today, get_user_fess_count,
+    user_id_in_anon_chat
 )
 
 CHANNEL_ID = -1002445709942
@@ -38,8 +39,11 @@ def register_handlers(bot):
                 bot.send_message(user_id, get_text(user_id, "send_fess_limit"))
                 bot.answer_callback_query(call.id)
                 return
+            # Pastikan user tidak dalam anon chat dan pending users bersih
+            anon_chats.pop(user_id, None)
             pending_users.add(user_id)
             bot.send_message(user_id, "Silakan ketik pesan menfess-mu (wajib ada 💚):")
+            bot.answer_callback_query(call.id)
 
         elif data == "features":
             markup = types.InlineKeyboardMarkup()
@@ -62,6 +66,8 @@ def register_handlers(bot):
             bot.answer_callback_query(call.id)
 
         elif data == "feature_anonchat":
+            # Hapus dari pending users jika ada
+            pending_users.discard(user_id)
             partner = find_anon_partner(user_id)
             if partner:
                 bot.send_message(user_id, "Partner ditemukan! Mulai ngobrol sekarang.\nKetik /end untuk mengakhiri chat.\nIngat, chat akan otomatis berakhir dalam 60 menit jika tidak aktif.")
@@ -97,7 +103,7 @@ def register_handlers(bot):
             msg_id = int(data[len("delete_msg_"):])
             try:
                 bot.delete_message(CHANNEL_ID, msg_id)
-                user_last_messages[user_id] = [(mid, dt) for (mid, dt) in user_last_messages[user_id] if mid != msg_id]
+                user_last_messages[user_id] = [(mid, dt) for (mid, dt) in user_last_messages.get(user_id, []) if mid != msg_id]
                 bot.send_message(user_id, "Fess berhasil dihapus!")
             except Exception:
                 bot.send_message(user_id, "Gagal menghapus fess.")
@@ -107,28 +113,34 @@ def register_handlers(bot):
             send_main_menu(call.message)
             bot.answer_callback_query(call.id)
 
-    @bot.message_handler(func=lambda message: message.from_user.id in pending_users)
-    def handle_fess(message):
+    @bot.message_handler(func=lambda message: True)
+    def handle_message(message):
         user_id = message.from_user.id
         text = message.text
-        if "💚" not in text:
-            bot.send_message(user_id, "Fess kamu harus mengandung 💚. Silakan coba lagi.")
-            return
-        if contains_bad_words(text):
-            bot.send_message(user_id, "Pesan menfess kamu mengandung kata yang tidak diperbolehkan.")
-            return
-        msg = bot.send_message(CHANNEL_ID, f"💌 Pesan anonim:\n{text}")
-        add_fess_message(user_id, msg.message_id)
-        update_leaderboard(user_id)
-        pending_users.discard(user_id)
-        bot.send_message(user_id, "Fess kamu telah dikirim ke Muncorner!")
 
-    @bot.message_handler(func=lambda message: user_id_in_anon_chat(message.from_user.id))
-    def handle_anon_message(message):
-        user_id = message.from_user.id
-        partner = anon_chats.get(user_id)
-        if partner:
-            bot.send_message(partner, f"Anon: {message.text}")
+        if user_id in pending_users:
+            # Proses kirim menfess
+            if "💚" not in text:
+                bot.send_message(user_id, "Fess kamu harus mengandung 💚. Silakan coba lagi.")
+                return
+            if contains_bad_words(text):
+                bot.send_message(user_id, "Pesan menfess kamu mengandung kata yang tidak diperbolehkan.")
+                return
+            msg = bot.send_message(CHANNEL_ID, f"💌 Pesan anonim:\n{text}")
+            add_fess_message(user_id, msg.message_id)
+            update_leaderboard(user_id)
+            pending_users.discard(user_id)
+            bot.send_message(user_id, "Fess kamu telah dikirim ke Muncorner!")
+
+        elif user_id_in_anon_chat(user_id):
+            # Proses pesan anon chat
+            partner = anon_chats.get(user_id)
+            if partner:
+                bot.send_message(partner, f"Anon: {text}")
+
+        else:
+            # Pesan biasa yang tidak ter-handle
+            bot.send_message(user_id, "Ketik /start untuk mulai.")
 
     @bot.message_handler(commands=['end'])
     def handle_end(message):
@@ -140,6 +152,3 @@ def register_handlers(bot):
             end_anon_chat(user_id)
         else:
             bot.send_message(user_id, "Kamu tidak sedang dalam percakapan anon.")
-
-def user_id_in_anon_chat(user_id):
-    return user_id in anon_chats and anon_chats[user_id] is not None
