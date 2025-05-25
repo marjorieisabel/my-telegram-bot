@@ -285,5 +285,8 @@ def callback_query(call):
         profile = user_profiles.get(user_id, {})
         notif = profile.get("notif", True)
         markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("On ✅" if notif else "
+markup.add(
+    types.InlineKeyboardButton("On ✅" if notif else "Off ❌", callback_data="toggle_notif"),
+    types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
+)
+bot.send_message(user_id, get_text(user_id, "setting_notif"), reply_markup=markup)
