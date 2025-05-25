@@ -133,3 +133,14 @@ def get_leaderboard():
             leaderboard_data[user_id] = total_count
     sorted_leaderboard = sorted(leaderboard_data.items(), key=lambda x: x[1], reverse=True)
     return sorted_leaderboard
+
+def get_total_menfess_today():
+    today = datetime.now().date()
+    total = sum(sum(count for date, count in date_counts if date == today)
+                for date_counts in user_fess_count.values())
+    return total
+
+def get_user_fess_count(user_id):
+    today = datetime.now().date()
+    date_counts = user_fess_count.get(user_id, [])
+    return sum(count for date, count in date_counts if date == today)
