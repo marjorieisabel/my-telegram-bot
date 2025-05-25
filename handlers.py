@@ -2,12 +2,13 @@ from telebot import types
 from datetime import datetime, timedelta
 from utils import get_text, send_main_menu
 
-# Data global (bisa diubah jadi db atau file nanti)
+# Data global (bisa diganti database nanti)
 user_profiles = {}
 user_menfess = {}
 user_language = {}
 
 def register_handlers(bot):
+
     @bot.message_handler(commands=['start'])
     def start(message):
         user_id = message.from_user.id
@@ -61,10 +62,8 @@ def register_handlers(bot):
         elif data == "setting_language":
             markup = types.InlineKeyboardMarkup(row_width=2)
             markup.add(
-                types.InlineKeyboardButton("Indonesia 🇮🇩" + (" ✅" if lang == "id" else ""),
-                                           callback_data="lang_id"),
-                types.InlineKeyboardButton("English 🇺🇸" + (" ✅" if lang == "en" else ""),
-                                           callback_data="lang_en"),
+                types.InlineKeyboardButton("Indonesia 🇮🇩" + (" ✅" if lang == "id" else ""), callback_data="lang_id"),
+                types.InlineKeyboardButton("English 🇺🇸" + (" ✅" if lang == "en" else ""), callback_data="lang_en"),
                 types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
             )
             bot.send_message(user_id, get_text(lang, "setting_language"), reply_markup=markup)
@@ -91,12 +90,12 @@ def register_handlers(bot):
             bot.send_message(user_id, get_text(lang, "setting_notif"), reply_markup=markup)
 
         elif data == "notif_on":
-            user_profiles[user_id]["notif"] = True
+            user_profiles.setdefault(user_id, {})["notif"] = True
             bot.send_message(user_id, get_text(lang, "setting_saved"))
             send_main_menu(bot, user_id, lang)
 
         elif data == "notif_off":
-            user_profiles[user_id]["notif"] = False
+            user_profiles.setdefault(user_id, {})["notif"] = False
             bot.send_message(user_id, get_text(lang, "setting_saved"))
             send_main_menu(bot, user_id, lang)
 
@@ -127,4 +126,34 @@ def register_handlers(bot):
         elif data.startswith("delmenfess_"):
             menfess_id = int(data.split("_")[1])
             menfess_list = user_menfess.get(user_id, [])
-            user_menfess[user_id] = [(mid, t, ts) for (mid
+            user_menfess[user_id] = [(mid, t, ts) for (mid, t, ts) in menfess_list if mid != menfess_id]
+            bot.send_message(user_id, get_text(lang, "menfess_deleted"))
+            send_main_menu(bot, user_id, lang)
+
+        elif data == "back_main":
+            send_main_menu(bot, user_id, lang)
+
+        elif data == "back_setting":
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup.add(
+                types.InlineKeyboardButton("👤 Profil", callback_data="setting_profile"),
+                types.InlineKeyboardButton("🌐 Bahasa / Language", callback_data="setting_language"),
+                types.InlineKeyboardButton("🔔 Notifikasi", callback_data="setting_notification"),
+                types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_main")
+            )
+            bot.send_message(user_id, get_text(lang, "setting_menu"), reply_markup=markup)
+
+
+def process_menfess(message):
+    user_id = message.from_user.id
+    lang = user_language.get(user_id, 'id')
+    text = message.text
+    if not text.startswith("💚"):
+        bot.send_message(user_id, get_text(lang, "menfess_must_start_with_heart"))
+        send_main_menu(bot, user_id, lang)
+        return
+    menfess_id = int(datetime.utcnow().timestamp())
+    menfess_list = user_menfess.setdefault(user_id, [])
+    menfess_list.append((menfess_id, text, datetime.utcnow()))
+    bot.send_message(user_id, get_text(lang, "menfess_sent"))
+    send_main_menu(bot, user_id, lang)
