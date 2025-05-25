@@ -290,3 +290,7 @@ markup.add(
     types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
 )
 bot.send_message(user_id, get_text(user_id, "setting_notif"), reply_markup=markup)
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.infinity_polling()
