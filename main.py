@@ -281,14 +281,20 @@ def callback_query(call):
         user_profiles[user_id]["lang"] = "en"
         bot.send_message(user_id, get_text(user_id, "setting_saved"))
 
-    elif data == "setting_notification":
-        profile = user_profiles.get(user_id, {})
-        notif = profile.get("notif", True)
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("On ✅" if notif else "
+elif data == "setting_notification":
+    profile = user_profiles.get(user_id, {})
+    notif = profile.get("notif", True)
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("On ✅" if notif else "On",
+                                   callback_data="notif_on"),
+        types.InlineKeyboardButton("Off ✅" if not notif else "Off",
+                                   callback_data="notif_off"),
+        types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_setting")
+    )
+    bot.send_message(user_id, get_text(user_id, "setting_notif"), reply_markup=markup)
 
-    elif data == "notif_on":
+elif data == "notif_on":
     user_profiles[user_id]["notif"] = True
     bot.send_message(user_id, get_text(user_id, "setting_saved"))
 
@@ -309,4 +315,4 @@ elif data == "back_setting":
         types.InlineKeyboardButton("🔔 Notifikasi", callback_data="setting_notification"),
         types.InlineKeyboardButton("⬅️ Kembali", callback_data="back_main")
     )
-    bot.send_message(user_id, get_text(user_id, "menu_setting"), reply_markup=markup)                                  
+    bot.send_message(user_id, get_text(user_id, "menu_setting"), reply_markup=markup)
